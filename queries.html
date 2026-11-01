@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block body %}
+<h1>SQL Test Queries</h1>
+<div class="qlist">{% for t,s in qs %}<a href="{{ url_for('queries',n=loop.index) }}" class="{{ 'on' if loop.index==n }}">Q{{loop.index}}</a>{% endfor %}</div>
+<h2>{{ title }}</h2><pre>{{ sql }}</pre>
+<div class="scroll"><table><tr>{% for c in cols %}<th>{{c}}</th>{% endfor %}</tr>{% for r in rows %}<tr>{% for c in r %}<td>{{c}}</td>{% endfor %}</tr>{% endfor %}</table></div>
+<p class="muted">{{ rows|length }} row(s)</p>{% endblock %}

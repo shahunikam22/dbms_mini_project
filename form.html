@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block body %}
+<h1>{{ title }}</h1>
+<form method="post" class="form">{% for name,label,kind in fields %}<label>{{label}}
+{% if kind is string %}<input name="{{name}}" type="{{kind}}" step="any" {% if kind=='date' %}value="{{today}}"{% endif %} {% if 'optional' not in label and 'blank' not in label and name not in ['loan_amount','interest_rate','tenure_months'] %}required{% endif %}>
+{% else %}<select name="{{name}}">{% for v,t in kind %}<option value="{{v}}">{{t}}</option>{% endfor %}</select>{% endif %}</label>{% endfor %}
+<button class="btn">Save</button></form>{% endblock %}

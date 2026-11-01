@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block body %}
+<h1>{{ title }} <small>{{ rows|length }} rows</small></h1>
+<p class="actions">{% if name=='farmers' %}<a class="btn" href="{{ url_for('add_farmer') }}">+ Add farmer</a>{% elif name=='tractors' %}<a class="btn" href="{{ url_for('add_tractor') }}">+ Add tractor</a>{% elif name=='purchases' %}<a class="btn" href="{{ url_for('new_purchase') }}">+ New purchase</a>{% endif %}</p>
+<div class="scroll"><table><tr>{% for c in cols %}<th>{{c}}</th>{% endfor %}{% if name in ['farmers','tractors','purchases'] %}<th></th>{% endif %}</tr>
+{% for r in rows %}<tr>{% for c in r %}<td>{{ c if c is not none else '' }}</td>{% endfor %}
+{% if name in ['farmers','tractors','purchases'] %}<td><form method="post" action="{{ url_for('delete',name=name,rid=r[0]) }}" onsubmit="return confirm('Delete this row?')"><button class="link">Delete</button></form></td>{% endif %}</tr>{% endfor %}</table></div>
+{% endblock %}

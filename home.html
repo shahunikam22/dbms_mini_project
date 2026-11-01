@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block body %}
+<h1>Dashboard</h1>
+<div class="cards">{% for k,v in stats.items() %}<div class="card"><b>{{ '{:,}'.format(v) }}</b><span>{{ k.replace('_',' ') }}</span></div>{% endfor %}</div>
+<p class="actions"><a class="btn" href="{{ url_for('new_purchase') }}">+ New purchase</a><a class="btn alt" href="{{ url_for('add_farmer') }}">+ Farmer</a><a class="btn alt" href="{{ url_for('add_tractor') }}">+ Tractor</a></p>
+<h2>Recent purchases</h2>
+<table><tr><th>ID</th><th>Farmer</th><th>Tractor</th><th>Date</th><th>Paid (Rs)</th><th>Scheme</th></tr>
+{% for r in recent %}<tr>{% for c in r %}<td>{{c}}</td>{% endfor %}</tr>{% endfor %}</table>
+{% endblock %}

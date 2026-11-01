@@ -1,0 +1,577 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Tractor DBMS Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: header strip, then a hero subsidy figure beside table counts, a wide stacked-column timeline over a 2-up grid of ranked bars, then record tabs, a SQL explorer and the schema. */
+:root {
+  --font: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --plane: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink2: #52514e;
+  --muted: #6b6a64;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --hair: rgba(11, 11, 11, 0.10);
+  --wash: #f1f0ec;
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --accent: #256abf;
+  --good: #0ca30c;
+  --crit: #d03b3b;
+  --closed: #898781;
+  --on-fill: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --plane: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --hair: rgba(255, 255, 255, 0.10);
+    --wash: #232321;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --accent: #6da7ec;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --plane: #0d0d0d;
+  --surface: #1a1a19;
+  --ink: #f0efec;
+  --ink2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --hair: rgba(255, 255, 255, 0.10);
+  --wash: #232321;
+  --s1: #3987e5;
+  --s2: #d95926;
+  --accent: #6da7ec;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--plane);
+  color: var(--ink);
+  font: 15px/1.5 var(--font);
+  padding-block: 24px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+a { color: var(--accent); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--mono); }
+
+/* header */
+.top { display: flex; flex-wrap: wrap; gap: 20px 32px; justify-content: space-between; align-items: flex-end; padding-bottom: 20px; border-bottom: 1px solid var(--hair); }
+.top > div { min-width: 0; }
+.eyebrow { font: 500 12px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(28px, 5vw, 42px)/1.05 var(--font); letter-spacing: -0.02em; margin: 6px 0 10px; text-wrap: balance; }
+.lede { max-width: 64ch; color: var(--ink2); margin: 0; }
+.nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.nav a { font-size: 13.5px; text-decoration: none; color: var(--ink2); padding: 6px 12px; border: 1px solid var(--hair); border-radius: 6px; background: var(--surface); }
+.nav a:hover { background: var(--wash); color: var(--ink); }
+
+h2 { font: 700 22px/1.2 var(--font); letter-spacing: -0.01em; margin: 0 0 4px; }
+.sec-sub { color: var(--ink2); margin: 0 0 16px; max-width: 70ch; }
+section { scroll-margin-top: 16px; }
+
+.card { background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 16px 18px; min-width: 0; }
+.card h3 { font: 600 15px/1.3 var(--font); margin: 0; }
+.card-sub { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+.card-head { display: flex; gap: 12px; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.card-head > div:first-child { min-width: 0; }
+.tools { display: flex; gap: 6px; flex-shrink: 0; }
+.chip { font: 500 12px var(--mono); border: 1px solid var(--hair); background: transparent; border-radius: 4px; padding: 3px 8px; cursor: pointer; color: var(--ink2); }
+.chip:hover { background: var(--wash); color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+
+/* overview */
+.overview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px; margin-bottom: 16px; }
+.hero-label { color: var(--ink2); font-size: 13.5px; }
+.hero-num { font-size: clamp(46px, 8vw, 66px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; margin: 4px 0 6px; }
+.hero-num small { font-size: 0.38em; font-weight: 600; letter-spacing: 0; color: var(--ink2); margin-left: 6px; }
+.hero-note { color: var(--ink2); margin: 0 0 16px; max-width: 46ch; }
+.split { display: flex; height: 28px; gap: 2px; margin-top: 4px; }
+.split b { display: block; border-radius: 4px; min-width: 0; }
+.split b:first-child { background: var(--s1); }
+.split b:last-child { background: var(--s2); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink2); margin-top: 10px; }
+.legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; vertical-align: -1px; }
+.counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-content: stretch; }
+.counts div { padding: 14px 4px 14px 14px; border-left: 1px solid var(--grid); border-top: 1px solid var(--grid); min-width: 0; }
+.counts div:nth-child(-n+4) { border-top: 0; }
+.counts div:nth-child(4n+1) { border-left: 0; padding-left: 0; }
+.counts .n { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+.counts .t { font: 500 12px var(--mono); color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.span2 { grid-column: 1 / -1; }
+
+/* ranked bars */
+.brow { padding: 7px 6px; border-radius: 4px; }
+.brow:hover { background: var(--wash); }
+.bl { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; }
+.bl .name { min-width: 0; overflow-wrap: anywhere; }
+.bl .bv { white-space: nowrap; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.bt { height: 10px; margin-top: 6px; border-left: 1px solid var(--axis); }
+.bf { height: 100%; background: var(--s1); border-radius: 0 4px 4px 0; min-width: 2px; }
+
+/* stacked columns */
+.plot { position: relative; height: 200px; margin: 10px 0 0 48px; }
+.gl { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid var(--grid); }
+.gl.base { border-top-color: var(--axis); }
+.gl span { position: absolute; left: -48px; top: -8px; width: 40px; text-align: right; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cols { position: absolute; inset: 0; display: flex; gap: 4px; }
+.col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column-reverse; align-items: center; border-radius: 4px; }
+.col:hover, .col:focus-visible { background: var(--wash); }
+.stack { width: min(24px, 80%); display: flex; flex-direction: column-reverse; }
+.stack i { display: block; }
+.stack .paid { background: var(--s1); }
+.stack .sub { background: var(--s2); border-top: 2px solid var(--surface); }
+.stack i.top { border-radius: 4px 4px 0 0; }
+.xl { display: flex; gap: 4px; margin: 6px 0 0 48px; }
+.xl span { flex: 1 1 0; min-width: 0; text-align: center; font-size: 11.5px; line-height: 1.3; color: var(--muted); }
+
+/* loans */
+.seg { display: flex; height: 28px; gap: 2px; }
+.seg b { display: grid; place-items: center; min-width: 0; border-radius: 4px; color: var(--on-fill); font: 600 13px var(--font); }
+.seg b.Active { background: var(--good); }
+.seg b.Overdue { background: var(--crit); }
+.seg b.Closed { background: var(--closed); }
+.callout { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0; padding: 10px 12px; border: 1px solid var(--hair); border-radius: 6px; background: var(--wash); font-size: 13.5px; }
+.callout p { margin: 0; min-width: 0; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 1px 9px 1px 4px; border: 1px solid var(--hair); border-radius: 999px; white-space: nowrap; }
+.pill i { font-style: normal; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 10px; color: var(--on-fill); background: var(--closed); }
+.pill.Active i { background: var(--good); }
+.pill.Overdue i { background: var(--crit); }
+.pill.Closed i { background: var(--closed); }
+.legend .pill { border: 0; padding: 0; gap: 7px; color: var(--ink2); font-size: 13px; }
+
+/* tables */
+.tablewrap { overflow-x: auto; border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font: 500 12px var(--font); letter-spacing: 0.02em; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--axis); white-space: nowrap; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+tbody tr:hover td { background: var(--wash); }
+th.num, td.num { text-align: right; }
+td.id { font-family: var(--mono); color: var(--muted); }
+td.dim { color: var(--muted); }
+.meta { color: var(--muted); font-size: 13px; }
+
+.bar { display: flex; flex-wrap: wrap; gap: 10px 16px; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.tab { border: 1px solid var(--hair); background: var(--surface); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13.5px; color: var(--ink2); }
+.tab:hover { background: var(--wash); color: var(--ink); }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.tab small { font: 500 11.5px var(--mono); opacity: 0.7; margin-left: 6px; }
+.search { border: 1px solid var(--hair); background: var(--surface); color: var(--ink); border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13.5px; width: min(260px, 100%); min-width: 0; }
+
+/* sql explorer */
+.explorer { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 16px; }
+.qlist { display: flex; flex-direction: column; gap: 2px; padding: 8px; max-height: 560px; overflow-y: auto; }
+.qbtn { display: flex; gap: 10px; text-align: left; background: transparent; border: 0; border-radius: 6px; padding: 8px 10px; cursor: pointer; color: var(--ink2); font-size: 13.5px; line-height: 1.35; }
+.qbtn:hover { background: var(--wash); color: var(--ink); }
+.qbtn[aria-current="true"] { background: var(--ink); color: var(--surface); }
+.qbtn .q { font: 500 12px var(--mono); flex: 0 0 28px; padding-top: 2px; opacity: 0.75; }
+pre.sql { font: 400 12.5px/1.6 var(--mono); background: var(--wash); border-radius: 6px; padding: 12px 14px; margin: 10px 0 14px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+pre.sql .kw { color: var(--accent); font-weight: 500; }
+.qh { display: flex; gap: 10px; align-items: baseline; }
+.qh .mono { font-weight: 500; color: var(--muted); }
+
+/* schema */
+.schema { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+.tcard h3 { display: flex; justify-content: space-between; gap: 8px; font-family: var(--mono); font-weight: 500; }
+.tcard h3 span { font: 400 12px var(--font); color: var(--muted); }
+.tcard ul { list-style: none; margin: 10px 0 0; padding: 0; font-size: 13px; }
+.tcard li { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; padding: 4px 0; border-top: 1px solid var(--grid); }
+.tcard li .c { font-family: var(--mono); }
+.tcard li .ty { color: var(--muted); font-size: 12px; }
+.tag { font: 500 10.5px var(--mono); padding: 0 5px; border-radius: 3px; border: 1px solid var(--hair); color: var(--ink2); }
+.tag.pk { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.rules { margin: 16px 0 0; padding-left: 18px; color: var(--ink2); max-width: 80ch; }
+.rules li { margin: 4px 0; }
+
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--hair); padding-top: 16px; }
+
+.tip { position: fixed; z-index: 50; pointer-events: none; display: none; background: var(--ink); color: var(--surface); font-size: 12.5px; line-height: 1.45; padding: 7px 10px; border-radius: 6px; max-width: 280px; white-space: pre-line; }
+
+@media (max-width: 860px) {
+  .overview, .grid, .explorer { grid-template-columns: minmax(0, 1fr); }
+  .counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .counts div { border-top: 1px solid var(--grid); border-left: 1px solid var(--grid); padding-left: 14px; }
+  .counts div:nth-child(-n+2) { border-top: 0; }
+  .counts div:nth-child(2n+1) { border-left: 0; padding-left: 0; }
+  .counts div:nth-child(n+3) { border-top: 1px solid var(--grid); }
+  .qlist { max-height: 260px; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">DBMS mini project</div>
+      <h1>Tractor subsidy database</h1>
+      <p class="lede" id="lede"></p>
+    </div>
+    <nav class="nav" aria-label="Sections">
+      <a href="#overview">Overview</a>
+      <a href="#records">Records</a>
+      <a href="#queries">SQL queries</a>
+      <a href="#schema">Schema</a>
+      <a href="https://github.com/shahunikam22/dbms_mini_project" target="_blank" rel="noopener">Repository ↗</a>
+    </nav>
+  </header>
+
+  <section id="overview">
+    <h2>Overview</h2>
+    <p class="sec-sub">Charts are drawn from the seed data, and most reuse the repo's own test queries: the chip on a card opens that query. Hover or focus a bar for exact figures.</p>
+    <div class="overview">
+      <div class="card" id="hero"></div>
+      <div class="card counts" id="counts" aria-label="Rows per table"></div>
+    </div>
+    <div class="grid" id="charts"></div>
+  </section>
+
+  <section id="records">
+    <h2>Records</h2>
+    <p class="sec-sub">The same list pages the app serves, with the joins already resolved.</p>
+    <div class="card">
+      <div class="bar">
+        <div class="tabs" role="tablist" id="tabs"></div>
+        <input class="search" id="search" type="search" placeholder="Filter rows" aria-label="Filter rows">
+      </div>
+      <div class="tablewrap" id="recTable"></div>
+      <p class="meta" id="recMeta" style="margin:10px 0 0"></p>
+    </div>
+  </section>
+
+  <section id="queries">
+    <h2>SQL queries</h2>
+    <p class="sec-sub">The twelve test queries from queries.sql, run against the SQLite schema and seed data.</p>
+    <div class="explorer">
+      <div class="card qlist" id="qlist" role="list"></div>
+      <div class="card" id="qpanel"></div>
+    </div>
+  </section>
+
+  <section id="schema">
+    <h2>Schema</h2>
+    <p class="sec-sub">Eight tables. Farmer_Phone holds the multivalued phone attribute, and Tractor_Service is a weak entity keyed by purchase and service number.</p>
+    <div class="schema" id="schemaGrid"></div>
+    <ul class="rules" id="rules"></ul>
+  </section>
+
+  <footer>
+    Snapshot of <span class="mono">seed.sql</span> from <a href="https://github.com/shahunikam22/dbms_mini_project" target="_blank" rel="noopener">shahunikam22/dbms_mini_project</a> at commit <span class="mono">ecda91f</span>. This page shows loaded sample data and does not connect to a live database.
+  </footer>
+</div>
+
+<script>
+const D = {"tables":{"Dealer":[{"dealer_id":1,"dealer_name":"Shree Agro Motors","city":"Pune","phone":"9822011101"},{"dealer_id":2,"dealer_name":"Kisan Tractors","city":"Nashik","phone":"9822011102"},{"dealer_id":3,"dealer_name":"Mahalaxmi Agri Sales","city":"Kolhapur","phone":"9822011103"},{"dealer_id":4,"dealer_name":"Sai Farm Equipments","city":"Ahmednagar","phone":"9822011104"},{"dealer_id":5,"dealer_name":"Vidarbha Tractors","city":"Nagpur","phone":"9822011105"}],"Tractors":[{"tractor_id":1,"brand":"Mahindra","model":"575 DI","hp":45,"price":780000,"dealer_id":1},{"tractor_id":2,"brand":"Mahindra","model":"265 DI","hp":30,"price":590000,"dealer_id":1},{"tractor_id":3,"brand":"Swaraj","model":"744 FE","hp":48,"price":820000,"dealer_id":2},{"tractor_id":4,"brand":"Swaraj","model":"735 XT","hp":40,"price":690000,"dealer_id":2},{"tractor_id":5,"brand":"John Deere","model":"5050 D","hp":50,"price":880000,"dealer_id":3},{"tractor_id":6,"brand":"John Deere","model":"5105","hp":40,"price":740000,"dealer_id":3},{"tractor_id":7,"brand":"Sonalika","model":"DI 750","hp":50,"price":760000,"dealer_id":4},{"tractor_id":8,"brand":"Sonalika","model":"Tiger 55","hp":55,"price":900000,"dealer_id":4},{"tractor_id":9,"brand":"TAFE","model":"45 DI","hp":45,"price":710000,"dealer_id":5},{"tractor_id":10,"brand":"Kubota","model":"MU4501","hp":45,"price":850000,"dealer_id":5},{"tractor_id":11,"brand":"New Holland","model":"3630","hp":55,"price":910000,"dealer_id":2},{"tractor_id":12,"brand":"Eicher","model":"380","hp":40,"price":650000,"dealer_id":3}],"Farmer_Info":[{"farmer_id":1,"fname":"Ramesh","lname":"Patil","village":"Wadgaon","district":"Pune","land_acres":5.5},{"farmer_id":2,"fname":"Suresh","lname":"Jadhav","village":"Sinnar","district":"Nashik","land_acres":8},{"farmer_id":3,"fname":"Ganesh","lname":"Shinde","village":"Karveer","district":"Kolhapur","land_acres":3.5},{"farmer_id":4,"fname":"Dattatray","lname":"Pawar","village":"Shevgaon","district":"Ahmednagar","land_acres":12},{"farmer_id":5,"fname":"Vilas","lname":"Bhosale","village":"Baramati","district":"Pune","land_acres":7},{"farmer_id":6,"fname":"Sanjay","lname":"More","village":"Niphad","district":"Nashik","land_acres":2.5},{"farmer_id":7,"fname":"Anil","lname":"Kale","village":"Kamptee","district":"Nagpur","land_acres":15},{"farmer_id":8,"fname":"Prakash","lname":"Gaikwad","village":"Rahuri","district":"Ahmednagar","land_acres":4},{"farmer_id":9,"fname":"Mahesh","lname":"Deshmukh","village":"Katol","district":"Nagpur","land_acres":9},{"farmer_id":10,"fname":"Sunil","lname":"Kadam","village":"Shirol","district":"Kolhapur","land_acres":6},{"farmer_id":11,"fname":"Balasaheb","lname":"Chavan","village":"Indapur","district":"Pune","land_acres":20},{"farmer_id":12,"fname":"Vitthal","lname":"Mane","village":"Hatkanangale","district":"Kolhapur","land_acres":1.5},{"farmer_id":13,"fname":"Rajendra","lname":"Salunkhe","village":"Yeola","district":"Nashik","land_acres":10},{"farmer_id":14,"fname":"Nitin","lname":"Thorat","village":"Sangamner","district":"Ahmednagar","land_acres":6.5},{"farmer_id":15,"fname":"Hanumant","lname":"Wagh","village":"Umred","district":"Nagpur","land_acres":3}],"Farmer_Phone":[{"farmer_id":1,"phone":"9853464097"},{"farmer_id":2,"phone":"9830246633"},{"farmer_id":3,"phone":"9862992312"},{"farmer_id":3,"phone":"7097366946"},{"farmer_id":4,"phone":"9816480894"},{"farmer_id":5,"phone":"9819722233"},{"farmer_id":6,"phone":"9881924865"},{"farmer_id":6,"phone":"7022633920"},{"farmer_id":7,"phone":"9859081935"},{"farmer_id":8,"phone":"9888220482"},{"farmer_id":9,"phone":"9817784483"},{"farmer_id":9,"phone":"7078106871"},{"farmer_id":10,"phone":"9838816302"},{"farmer_id":11,"phone":"9815032582"},{"farmer_id":12,"phone":"9821535642"},{"farmer_id":12,"phone":"7068202938"},{"farmer_id":13,"phone":"9866126116"},{"farmer_id":14,"phone":"9819375836"},{"farmer_id":15,"phone":"9842301241"},{"farmer_id":15,"phone":"7022175294"}],"GovScheme":[{"scheme_id":1,"scheme_name":"PM-KISAN Mechanisation Subsidy","subsidy_percent":25,"max_subsidy":125000,"min_land_acres":2},{"scheme_id":2,"scheme_name":"Sub-Mission on Agri Mechanization (SMAM)","subsidy_percent":40,"max_subsidy":150000,"min_land_acres":1},{"scheme_id":3,"scheme_name":"Mahadbt Farm Mechanization","subsidy_percent":35,"max_subsidy":100000,"min_land_acres":0},{"scheme_id":4,"scheme_name":"SC/ST Farmer Tractor Scheme","subsidy_percent":50,"max_subsidy":200000,"min_land_acres":1},{"scheme_id":5,"scheme_name":"Women Farmer Tractor Scheme","subsidy_percent":50,"max_subsidy":180000,"min_land_acres":0.5}],"Purchase":[{"purchase_id":1,"farmer_id":1,"tractor_id":9,"scheme_id":1,"purchase_date":"2023-02-14","price_paid":585000,"subsidy_amt":125000},{"purchase_id":2,"farmer_id":2,"tractor_id":10,"scheme_id":null,"purchase_date":"2023-05-20","price_paid":850000,"subsidy_amt":0},{"purchase_id":3,"farmer_id":3,"tractor_id":2,"scheme_id":3,"purchase_date":"2023-08-11","price_paid":490000,"subsidy_amt":100000},{"purchase_id":4,"farmer_id":5,"tractor_id":2,"scheme_id":4,"purchase_date":"2023-11-03","price_paid":390000,"subsidy_amt":200000},{"purchase_id":5,"farmer_id":7,"tractor_id":6,"scheme_id":null,"purchase_date":"2024-01-18","price_paid":740000,"subsidy_amt":0},{"purchase_id":6,"farmer_id":9,"tractor_id":10,"scheme_id":2,"purchase_date":"2024-03-25","price_paid":700000,"subsidy_amt":150000},{"purchase_id":7,"farmer_id":10,"tractor_id":8,"scheme_id":5,"purchase_date":"2024-06-09","price_paid":720000,"subsidy_amt":180000},{"purchase_id":8,"farmer_id":11,"tractor_id":8,"scheme_id":3,"purchase_date":"2024-08-30","price_paid":800000,"subsidy_amt":100000},{"purchase_id":9,"farmer_id":14,"tractor_id":4,"scheme_id":null,"purchase_date":"2024-10-12","price_paid":690000,"subsidy_amt":0},{"purchase_id":10,"farmer_id":8,"tractor_id":2,"scheme_id":1,"purchase_date":"2025-01-07","price_paid":465000,"subsidy_amt":125000},{"purchase_id":11,"farmer_id":6,"tractor_id":1,"scheme_id":2,"purchase_date":"2025-03-19","price_paid":630000,"subsidy_amt":150000},{"purchase_id":12,"farmer_id":15,"tractor_id":3,"scheme_id":4,"purchase_date":"2025-06-02","price_paid":620000,"subsidy_amt":200000},{"purchase_id":13,"farmer_id":12,"tractor_id":11,"scheme_id":3,"purchase_date":"2025-08-21","price_paid":810000,"subsidy_amt":100000},{"purchase_id":14,"farmer_id":13,"tractor_id":8,"scheme_id":null,"purchase_date":"2025-09-15","price_paid":900000,"subsidy_amt":0}],"Loan_Details":[{"loan_id":1,"purchase_id":1,"bank_name":"SBI","loan_amount":410000,"interest_rate":10.25,"tenure_months":36,"status":"Active"},{"loan_id":2,"purchase_id":2,"bank_name":"Union Bank","loan_amount":595000,"interest_rate":7.5,"tenure_months":48,"status":"Active"},{"loan_id":3,"purchase_id":4,"bank_name":"SBI","loan_amount":273000,"interest_rate":10.25,"tenure_months":36,"status":"Overdue"},{"loan_id":4,"purchase_id":5,"bank_name":"Cosmos Bank","loan_amount":518000,"interest_rate":9.5,"tenure_months":60,"status":"Active"},{"loan_id":5,"purchase_id":7,"bank_name":"SBI","loan_amount":504000,"interest_rate":7.5,"tenure_months":60,"status":"Active"},{"loan_id":6,"purchase_id":8,"bank_name":"SBI","loan_amount":560000,"interest_rate":7.5,"tenure_months":60,"status":"Overdue"},{"loan_id":7,"purchase_id":10,"bank_name":"Union Bank","loan_amount":326000,"interest_rate":9.5,"tenure_months":60,"status":"Active"},{"loan_id":8,"purchase_id":11,"bank_name":"Cosmos Bank","loan_amount":441000,"interest_rate":8.5,"tenure_months":60,"status":"Active"},{"loan_id":9,"purchase_id":13,"bank_name":"Union Bank","loan_amount":567000,"interest_rate":9.5,"tenure_months":84,"status":"Closed"},{"loan_id":10,"purchase_id":14,"bank_name":"Union Bank","loan_amount":630000,"interest_rate":7.5,"tenure_months":48,"status":"Active"}],"Tractor_Service":[{"purchase_id":2,"service_no":1,"service_date":"2025-05-14","service_type":"General Service","cost":9500},{"purchase_id":3,"service_no":1,"service_date":"2025-09-27","service_type":"General Service","cost":1500},{"purchase_id":3,"service_no":2,"service_date":"2025-10-19","service_type":"General Service","cost":4200},{"purchase_id":4,"service_no":1,"service_date":"2025-08-22","service_type":"Tyre Replacement","cost":6800},{"purchase_id":5,"service_no":1,"service_date":"2025-03-23","service_type":"General Service","cost":1500},{"purchase_id":6,"service_no":1,"service_date":"2025-06-24","service_type":"Hydraulic Check","cost":4200},{"purchase_id":6,"service_no":2,"service_date":"2025-10-03","service_type":"Oil Change","cost":9500},{"purchase_id":6,"service_no":3,"service_date":"2025-07-06","service_type":"Clutch Repair","cost":2500},{"purchase_id":7,"service_no":1,"service_date":"2025-10-16","service_type":"Tyre Replacement","cost":6800},{"purchase_id":7,"service_no":2,"service_date":"2025-02-27","service_type":"Oil Change","cost":4200},{"purchase_id":8,"service_no":1,"service_date":"2025-05-23","service_type":"Hydraulic Check","cost":4200},{"purchase_id":8,"service_no":2,"service_date":"2025-01-15","service_type":"Clutch Repair","cost":2500},{"purchase_id":8,"service_no":3,"service_date":"2025-10-04","service_type":"Hydraulic Check","cost":1500},{"purchase_id":9,"service_no":1,"service_date":"2025-04-13","service_type":"Hydraulic Check","cost":6800},{"purchase_id":10,"service_no":1,"service_date":"2025-09-09","service_type":"Hydraulic Check","cost":4200},{"purchase_id":10,"service_no":2,"service_date":"2025-07-08","service_type":"General Service","cost":1500},{"purchase_id":10,"service_no":3,"service_date":"2025-03-05","service_type":"General Service","cost":2500},{"purchase_id":12,"service_no":1,"service_date":"2025-10-19","service_type":"Clutch Repair","cost":2500},{"purchase_id":12,"service_no":2,"service_date":"2025-09-20","service_type":"Oil Change","cost":6800},{"purchase_id":14,"service_no":1,"service_date":"2025-08-06","service_type":"Oil Change","cost":4200}]},"views":{"purchases":[{"id":1,"farmer":"Ramesh Patil","district":"Pune","brand":"TAFE","model":"45 DI","scheme":"PM-KISAN Mechanisation Subsidy","date":"2023-02-14","list_price":710000,"subsidy":125000,"paid":585000,"dealer":"Vidarbha Tractors"},{"id":2,"farmer":"Suresh Jadhav","district":"Nashik","brand":"Kubota","model":"MU4501","scheme":"No scheme","date":"2023-05-20","list_price":850000,"subsidy":0,"paid":850000,"dealer":"Vidarbha Tractors"},{"id":3,"farmer":"Ganesh Shinde","district":"Kolhapur","brand":"Mahindra","model":"265 DI","scheme":"Mahadbt Farm Mechanization","date":"2023-08-11","list_price":590000,"subsidy":100000,"paid":490000,"dealer":"Shree Agro Motors"},{"id":4,"farmer":"Vilas Bhosale","district":"Pune","brand":"Mahindra","model":"265 DI","scheme":"SC/ST Farmer Tractor Scheme","date":"2023-11-03","list_price":590000,"subsidy":200000,"paid":390000,"dealer":"Shree Agro Motors"},{"id":5,"farmer":"Anil Kale","district":"Nagpur","brand":"John Deere","model":"5105","scheme":"No scheme","date":"2024-01-18","list_price":740000,"subsidy":0,"paid":740000,"dealer":"Mahalaxmi Agri Sales"},{"id":6,"farmer":"Mahesh Deshmukh","district":"Nagpur","brand":"Kubota","model":"MU4501","scheme":"Sub-Mission on Agri Mechanization (SMAM)","date":"2024-03-25","list_price":850000,"subsidy":150000,"paid":700000,"dealer":"Vidarbha Tractors"},{"id":7,"farmer":"Sunil Kadam","district":"Kolhapur","brand":"Sonalika","model":"Tiger 55","scheme":"Women Farmer Tractor Scheme","date":"2024-06-09","list_price":900000,"subsidy":180000,"paid":720000,"dealer":"Sai Farm Equipments"},{"id":8,"farmer":"Balasaheb Chavan","district":"Pune","brand":"Sonalika","model":"Tiger 55","scheme":"Mahadbt Farm Mechanization","date":"2024-08-30","list_price":900000,"subsidy":100000,"paid":800000,"dealer":"Sai Farm Equipments"},{"id":9,"farmer":"Nitin Thorat","district":"Ahmednagar","brand":"Swaraj","model":"735 XT","scheme":"No scheme","date":"2024-10-12","list_price":690000,"subsidy":0,"paid":690000,"dealer":"Kisan Tractors"},{"id":10,"farmer":"Prakash Gaikwad","district":"Ahmednagar","brand":"Mahindra","model":"265 DI","scheme":"PM-KISAN Mechanisation Subsidy","date":"2025-01-07","list_price":590000,"subsidy":125000,"paid":465000,"dealer":"Shree Agro Motors"},{"id":11,"farmer":"Sanjay More","district":"Nashik","brand":"Mahindra","model":"575 DI","scheme":"Sub-Mission on Agri Mechanization (SMAM)","date":"2025-03-19","list_price":780000,"subsidy":150000,"paid":630000,"dealer":"Shree Agro Motors"},{"id":12,"farmer":"Hanumant Wagh","district":"Nagpur","brand":"Swaraj","model":"744 FE","scheme":"SC/ST Farmer Tractor Scheme","date":"2025-06-02","list_price":820000,"subsidy":200000,"paid":620000,"dealer":"Kisan Tractors"},{"id":13,"farmer":"Vitthal Mane","district":"Kolhapur","brand":"New Holland","model":"3630","scheme":"Mahadbt Farm Mechanization","date":"2025-08-21","list_price":910000,"subsidy":100000,"paid":810000,"dealer":"Kisan Tractors"},{"id":14,"farmer":"Rajendra Salunkhe","district":"Nashik","brand":"Sonalika","model":"Tiger 55","scheme":"No scheme","date":"2025-09-15","list_price":900000,"subsidy":0,"paid":900000,"dealer":"Sai Farm Equipments"}],"loans":[{"id":1,"farmer":"Ramesh Patil","bank":"SBI","amount":410000,"rate":10.25,"months":36,"status":"Active"},{"id":2,"farmer":"Suresh Jadhav","bank":"Union Bank","amount":595000,"rate":7.5,"months":48,"status":"Active"},{"id":3,"farmer":"Vilas Bhosale","bank":"SBI","amount":273000,"rate":10.25,"months":36,"status":"Overdue"},{"id":4,"farmer":"Anil Kale","bank":"Cosmos Bank","amount":518000,"rate":9.5,"months":60,"status":"Active"},{"id":5,"farmer":"Sunil Kadam","bank":"SBI","amount":504000,"rate":7.5,"months":60,"status":"Active"},{"id":6,"farmer":"Balasaheb Chavan","bank":"SBI","amount":560000,"rate":7.5,"months":60,"status":"Overdue"},{"id":7,"farmer":"Prakash Gaikwad","bank":"Union Bank","amount":326000,"rate":9.5,"months":60,"status":"Active"},{"id":8,"farmer":"Sanjay More","bank":"Cosmos Bank","amount":441000,"rate":8.5,"months":60,"status":"Active"},{"id":9,"farmer":"Vitthal Mane","bank":"Union Bank","amount":567000,"rate":9.5,"months":84,"status":"Closed"},{"id":10,"farmer":"Rajendra Salunkhe","bank":"Union Bank","amount":630000,"rate":7.5,"months":48,"status":"Active"}],"services":[{"pid":2,"no":1,"tractor":"Kubota MU4501","date":"2025-05-14","type":"General Service","cost":9500},{"pid":3,"no":1,"tractor":"Mahindra 265 DI","date":"2025-09-27","type":"General Service","cost":1500},{"pid":3,"no":2,"tractor":"Mahindra 265 DI","date":"2025-10-19","type":"General Service","cost":4200},{"pid":4,"no":1,"tractor":"Mahindra 265 DI","date":"2025-08-22","type":"Tyre Replacement","cost":6800},{"pid":5,"no":1,"tractor":"John Deere 5105","date":"2025-03-23","type":"General Service","cost":1500},{"pid":6,"no":1,"tractor":"Kubota MU4501","date":"2025-06-24","type":"Hydraulic Check","cost":4200},{"pid":6,"no":2,"tractor":"Kubota MU4501","date":"2025-10-03","type":"Oil Change","cost":9500},{"pid":6,"no":3,"tractor":"Kubota MU4501","date":"2025-07-06","type":"Clutch Repair","cost":2500},{"pid":7,"no":1,"tractor":"Sonalika Tiger 55","date":"2025-10-16","type":"Tyre Replacement","cost":6800},{"pid":7,"no":2,"tractor":"Sonalika Tiger 55","date":"2025-02-27","type":"Oil Change","cost":4200},{"pid":8,"no":1,"tractor":"Sonalika Tiger 55","date":"2025-05-23","type":"Hydraulic Check","cost":4200},{"pid":8,"no":2,"tractor":"Sonalika Tiger 55","date":"2025-01-15","type":"Clutch Repair","cost":2500},{"pid":8,"no":3,"tractor":"Sonalika Tiger 55","date":"2025-10-04","type":"Hydraulic Check","cost":1500},{"pid":9,"no":1,"tractor":"Swaraj 735 XT","date":"2025-04-13","type":"Hydraulic Check","cost":6800},{"pid":10,"no":1,"tractor":"Mahindra 265 DI","date":"2025-09-09","type":"Hydraulic Check","cost":4200},{"pid":10,"no":2,"tractor":"Mahindra 265 DI","date":"2025-07-08","type":"General Service","cost":1500},{"pid":10,"no":3,"tractor":"Mahindra 265 DI","date":"2025-03-05","type":"General Service","cost":2500},{"pid":12,"no":1,"tractor":"Swaraj 744 FE","date":"2025-10-19","type":"Clutch Repair","cost":2500},{"pid":12,"no":2,"tractor":"Swaraj 744 FE","date":"2025-09-20","type":"Oil Change","cost":6800},{"pid":14,"no":1,"tractor":"Sonalika Tiger 55","date":"2025-08-06","type":"Oil Change","cost":4200}]},"queries":[{"title":"Q1  List all farmers with their district and land holding","sql":"SELECT farmer_id, fname, lname, village, district, land_acres FROM Farmer_Info ORDER BY land_acres DESC","cols":["farmer_id","fname","lname","village","district","land_acres"],"rows":[[11,"Balasaheb","Chavan","Indapur","Pune",20],[7,"Anil","Kale","Kamptee","Nagpur",15],[4,"Dattatray","Pawar","Shevgaon","Ahmednagar",12],[13,"Rajendra","Salunkhe","Yeola","Nashik",10],[9,"Mahesh","Deshmukh","Katol","Nagpur",9],[2,"Suresh","Jadhav","Sinnar","Nashik",8],[5,"Vilas","Bhosale","Baramati","Pune",7],[14,"Nitin","Thorat","Sangamner","Ahmednagar",6.5],[10,"Sunil","Kadam","Shirol","Kolhapur",6],[1,"Ramesh","Patil","Wadgaon","Pune",5.5],[8,"Prakash","Gaikwad","Rahuri","Ahmednagar",4],[3,"Ganesh","Shinde","Karveer","Kolhapur",3.5],[15,"Hanumant","Wagh","Umred","Nagpur",3],[6,"Sanjay","More","Niphad","Nashik",2.5],[12,"Vitthal","Mane","Hatkanangale","Kolhapur",1.5]]},{"title":"Q2  Tractors costing more than 8,00,000 with their dealer","sql":"SELECT t.brand, t.model, t.hp, t.price, d.dealer_name FROM Tractors t JOIN Dealer d ON t.dealer_id = d.dealer_id WHERE t.price > 800000 ORDER BY t.price DESC","cols":["brand","model","hp","price","dealer_name"],"rows":[["New Holland","3630",55,910000,"Kisan Tractors"],["Sonalika","Tiger 55",55,900000,"Sai Farm Equipments"],["John Deere","5050 D",50,880000,"Mahalaxmi Agri Sales"],["Kubota","MU4501",45,850000,"Vidarbha Tractors"],["Swaraj","744 FE",48,820000,"Kisan Tractors"]]},{"title":"Q3  Which farmer bought which tractor (JOIN of three tables)","sql":"SELECT p.purchase_id, f.fname, f.lname, t.brand, t.model, p.purchase_date, p.price_paid FROM Purchase p JOIN Farmer_Info f ON p.farmer_id = f.farmer_id JOIN Tractors t ON p.tractor_id = t.tractor_id ORDER BY p.purchase_date","cols":["purchase_id","fname","lname","brand","model","purchase_date","price_paid"],"rows":[[1,"Ramesh","Patil","TAFE","45 DI","2023-02-14",585000],[2,"Suresh","Jadhav","Kubota","MU4501","2023-05-20",850000],[3,"Ganesh","Shinde","Mahindra","265 DI","2023-08-11",490000],[4,"Vilas","Bhosale","Mahindra","265 DI","2023-11-03",390000],[5,"Anil","Kale","John Deere","5105","2024-01-18",740000],[6,"Mahesh","Deshmukh","Kubota","MU4501","2024-03-25",700000],[7,"Sunil","Kadam","Sonalika","Tiger 55","2024-06-09",720000],[8,"Balasaheb","Chavan","Sonalika","Tiger 55","2024-08-30",800000],[9,"Nitin","Thorat","Swaraj","735 XT","2024-10-12",690000],[10,"Prakash","Gaikwad","Mahindra","265 DI","2025-01-07",465000],[11,"Sanjay","More","Mahindra","575 DI","2025-03-19",630000],[12,"Hanumant","Wagh","Swaraj","744 FE","2025-06-02",620000],[13,"Vitthal","Mane","New Holland","3630","2025-08-21",810000],[14,"Rajendra","Salunkhe","Sonalika","Tiger 55","2025-09-15",900000]]},{"title":"Q4  Number of tractors sold and total sales per dealer","sql":"SELECT d.dealer_name, COUNT(p.purchase_id) AS tractors_sold, SUM(p.price_paid) AS total_sales FROM Dealer d JOIN Tractors t ON t.dealer_id = d.dealer_id JOIN Purchase p ON p.tractor_id = t.tractor_id GROUP BY d.dealer_id, d.dealer_name ORDER BY total_sales DESC","cols":["dealer_name","tractors_sold","total_sales"],"rows":[["Sai Farm Equipments",3,2420000],["Vidarbha Tractors",3,2135000],["Kisan Tractors",3,2120000],["Shree Agro Motors",4,1975000],["Mahalaxmi Agri Sales",1,740000]]},{"title":"Q5  Total subsidy given under each government scheme","sql":"SELECT g.scheme_name, COUNT(*) AS beneficiaries, SUM(p.subsidy_amt) AS total_subsidy FROM GovScheme g JOIN Purchase p ON p.scheme_id = g.scheme_id GROUP BY g.scheme_id, g.scheme_name ORDER BY total_subsidy DESC","cols":["scheme_name","beneficiaries","total_subsidy"],"rows":[["SC/ST Farmer Tractor Scheme",2,400000],["Sub-Mission on Agri Mechanization (SMAM)",2,300000],["Mahadbt Farm Mechanization",3,300000],["PM-KISAN Mechanisation Subsidy",2,250000],["Women Farmer Tractor Scheme",1,180000]]},{"title":"Q6  Farmers who bought a tractor WITHOUT any government scheme","sql":"SELECT f.fname, f.lname, f.district FROM Farmer_Info f JOIN Purchase p ON p.farmer_id = f.farmer_id WHERE p.scheme_id IS NULL","cols":["fname","lname","district"],"rows":[["Suresh","Jadhav","Nashik"],["Anil","Kale","Nagpur"],["Nitin","Thorat","Ahmednagar"],["Rajendra","Salunkhe","Nashik"]]},{"title":"Q7  Active or overdue loans with farmer name and bank","sql":"SELECT f.fname, f.lname, l.bank_name, l.loan_amount, l.interest_rate, l.status FROM Loan_Details l JOIN Purchase p ON l.purchase_id = p.purchase_id JOIN Farmer_Info f ON p.farmer_id = f.farmer_id WHERE l.status IN ('Active','Overdue') ORDER BY l.loan_amount DESC","cols":["fname","lname","bank_name","loan_amount","interest_rate","status"],"rows":[["Rajendra","Salunkhe","Union Bank",630000,7.5,"Active"],["Suresh","Jadhav","Union Bank",595000,7.5,"Active"],["Balasaheb","Chavan","SBI",560000,7.5,"Overdue"],["Anil","Kale","Cosmos Bank",518000,9.5,"Active"],["Sunil","Kadam","SBI",504000,7.5,"Active"],["Sanjay","More","Cosmos Bank",441000,8.5,"Active"],["Ramesh","Patil","SBI",410000,10.25,"Active"],["Prakash","Gaikwad","Union Bank",326000,9.5,"Active"],["Vilas","Bhosale","SBI",273000,10.25,"Overdue"]]},{"title":"Q8  Total service expenditure per tractor purchase (weak entity), highest first","sql":"SELECT p.purchase_id, f.fname, t.model, COUNT(s.service_no) AS services, SUM(s.cost) AS total_cost FROM Tractor_Service s JOIN Purchase p ON s.purchase_id = p.purchase_id JOIN Farmer_Info f ON p.farmer_id = f.farmer_id JOIN Tractors t ON p.tractor_id = t.tractor_id GROUP BY p.purchase_id, f.fname, t.model ORDER BY total_cost DESC","cols":["purchase_id","fname","model","services","total_cost"],"rows":[[6,"Mahesh","MU4501",3,16200],[7,"Sunil","Tiger 55",2,11000],[2,"Suresh","MU4501",1,9500],[12,"Hanumant","744 FE",2,9300],[8,"Balasaheb","Tiger 55",3,8200],[10,"Prakash","265 DI",3,8200],[4,"Vilas","265 DI",1,6800],[9,"Nitin","735 XT",1,6800],[3,"Ganesh","265 DI",2,5700],[14,"Rajendra","Tiger 55",1,4200],[5,"Anil","5105",1,1500]]},{"title":"Q9  Farmers with more than 8 acres of land who have not yet bought a tractor (subquery)","sql":"SELECT fname, lname, village, land_acres FROM Farmer_Info WHERE land_acres > 8 AND farmer_id NOT IN (SELECT farmer_id FROM Purchase)","cols":["fname","lname","village","land_acres"],"rows":[["Dattatray","Pawar","Shevgaon",12]]},{"title":"Q10 Most popular tractor brand (by number sold)","sql":"SELECT t.brand, COUNT(*) AS units_sold FROM Purchase p JOIN Tractors t ON p.tractor_id = t.tractor_id GROUP BY t.brand ORDER BY units_sold DESC","cols":["brand","units_sold"],"rows":[["Mahindra",4],["Sonalika",3],["Swaraj",2],["Kubota",2],["TAFE",1],["New Holland",1],["John Deere",1]]},{"title":"Q11 Average loan interest rate per bank","sql":"SELECT bank_name, COUNT(*) AS loans, ROUND(AVG(interest_rate),2) AS avg_rate, SUM(loan_amount) AS total_lent FROM Loan_Details GROUP BY bank_name ORDER BY total_lent DESC","cols":["bank_name","loans","avg_rate","total_lent"],"rows":[["Union Bank",4,8.5,2118000],["SBI",4,8.88,1747000],["Cosmos Bank",2,9.0,959000]]},{"title":"Q12 Farmers with more than one phone number (multivalued attribute)","sql":"SELECT f.fname, f.lname, COUNT(*) AS phones FROM Farmer_Info f JOIN Farmer_Phone ph ON ph.farmer_id = f.farmer_id GROUP BY f.farmer_id, f.fname, f.lname HAVING COUNT(*) > 1","cols":["fname","lname","phones"],"rows":[["Ganesh","Shinde",2],["Sanjay","More",2],["Mahesh","Deshmukh",2],["Vitthal","Mane",2],["Hanumant","Wagh",2]]}],"schema":[{"name":"Dealer","columns":[{"name":"dealer_id","type":"INTEGER","pk":true,"notnull":false},{"name":"dealer_name","type":"VARCHAR(50)","pk":false,"notnull":true},{"name":"city","type":"VARCHAR(30)","pk":false,"notnull":true},{"name":"phone","type":"TEXT","pk":false,"notnull":true}],"rows":5},{"name":"Tractors","columns":[{"name":"tractor_id","type":"INTEGER","pk":true,"notnull":false},{"name":"brand","type":"VARCHAR(30)","pk":false,"notnull":true},{"name":"model","type":"VARCHAR(40)","pk":false,"notnull":true},{"name":"hp","type":"INT","pk":false,"notnull":true},{"name":"price","type":"DECIMAL(10,2)","pk":false,"notnull":true},{"name":"dealer_id","type":"INT","pk":false,"notnull":true,"fk":{"table":"Dealer","on_delete":"NO ACTION"}}],"rows":12},{"name":"Farmer_Info","columns":[{"name":"farmer_id","type":"INTEGER","pk":true,"notnull":false},{"name":"fname","type":"VARCHAR(20)","pk":false,"notnull":true},{"name":"lname","type":"VARCHAR(20)","pk":false,"notnull":true},{"name":"village","type":"VARCHAR(30)","pk":false,"notnull":true},{"name":"district","type":"VARCHAR(30)","pk":false,"notnull":true},{"name":"land_acres","type":"DECIMAL(6,2)","pk":false,"notnull":true}],"rows":15},{"name":"Farmer_Phone","columns":[{"name":"farmer_id","type":"INT","pk":true,"notnull":true,"fk":{"table":"Farmer_Info","on_delete":"CASCADE"}},{"name":"phone","type":"TEXT","pk":true,"notnull":true}],"rows":20},{"name":"GovScheme","columns":[{"name":"scheme_id","type":"INTEGER","pk":true,"notnull":false},{"name":"scheme_name","type":"VARCHAR(60)","pk":false,"notnull":true},{"name":"subsidy_percent","type":"DECIMAL(4,1)","pk":false,"notnull":true},{"name":"max_subsidy","type":"DECIMAL(10,2)","pk":false,"notnull":true},{"name":"min_land_acres","type":"DECIMAL(6,2)","pk":false,"notnull":true}],"rows":5},{"name":"Purchase","columns":[{"name":"purchase_id","type":"INTEGER","pk":true,"notnull":false},{"name":"farmer_id","type":"INT","pk":false,"notnull":true,"fk":{"table":"Farmer_Info","on_delete":"NO ACTION"}},{"name":"tractor_id","type":"INT","pk":false,"notnull":true,"fk":{"table":"Tractors","on_delete":"NO ACTION"}},{"name":"scheme_id","type":"INT","pk":false,"notnull":false,"fk":{"table":"GovScheme","on_delete":"NO ACTION"}},{"name":"purchase_date","type":"DATE","pk":false,"notnull":true},{"name":"price_paid","type":"DECIMAL(10,2)","pk":false,"notnull":true},{"name":"subsidy_amt","type":"DECIMAL(10,2)","pk":false,"notnull":true}],"rows":14},{"name":"Loan_Details","columns":[{"name":"loan_id","type":"INTEGER","pk":true,"notnull":false},{"name":"purchase_id","type":"INT","pk":false,"notnull":true,"fk":{"table":"Purchase","on_delete":"CASCADE"}},{"name":"bank_name","type":"VARCHAR(40)","pk":false,"notnull":true},{"name":"loan_amount","type":"DECIMAL(10,2)","pk":false,"notnull":true},{"name":"interest_rate","type":"DECIMAL(4,2)","pk":false,"notnull":true},{"name":"tenure_months","type":"INT","pk":false,"notnull":true},{"name":"status","type":"VARTEXT","pk":false,"notnull":true}],"rows":10},{"name":"Tractor_Service","columns":[{"name":"purchase_id","type":"INT","pk":true,"notnull":true,"fk":{"table":"Purchase","on_delete":"CASCADE"}},{"name":"service_no","type":"INT","pk":true,"notnull":true},{"name":"service_date","type":"DATE","pk":false,"notnull":true},{"name":"service_type","type":"VARCHAR(30)","pk":false,"notnull":true},{"name":"cost","type":"DECIMAL(8,2)","pk":false,"notnull":true}],"rows":20}]};
+
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nf = new Intl.NumberFormat('en-IN');
+const trim = x => String(+x.toFixed(2));
+const inr = n => '₹' + nf.format(Math.round(n));
+const lakh = n => {
+  const a = Math.abs(n);
+  if (a >= 1e7) return '₹' + trim(n / 1e7) + ' Cr';
+  if (a >= 1e5) return '₹' + trim(n / 1e5) + ' L';
+  return inr(n);
+};
+const sum = (arr, f) => arr.reduce((t, x) => t + f(x), 0);
+const GLYPH = { Active: '✓', Overdue: '!', Closed: '–' };
+
+const T = D.tables;
+const P = D.views.purchases;
+const L = D.views.loans;
+const getQ = n => D.queries[n - 1];
+const qIndex = (q, name) => q.cols.indexOf(name);
+
+/* ---------- generic table ---------- */
+function cell(v, t) {
+  if (v === null || v === undefined || v === '') return '<td class="dim">—</td>';
+  switch (t) {
+    case 'inr': return `<td class="num">${inr(v)}</td>`;
+    case 'num': return `<td class="num">${nf.format(v)}</td>`;
+    case 'pct': return `<td class="num">${v}%</td>`;
+    case 'id': return `<td class="id">${esc(v)}</td>`;
+    case 'pill': return `<td><span class="pill ${esc(v)}"><i aria-hidden="true">${GLYPH[v] || ''}</i>${esc(v)}</span></td>`;
+    default: return `<td>${esc(v)}</td>`;
+  }
+}
+function tableHTML(cols, rows) {
+  const numeric = t => t === 'inr' || t === 'num' || t === 'pct';
+  const head = cols.map(c => `<th class="${numeric(c[1]) ? 'num' : ''}">${esc(c[0])}</th>`).join('');
+  const body = rows.map(r => `<tr>${r.map((v, i) => cell(v, cols[i][1])).join('')}</tr>`).join('');
+  return `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+const moneyRe = /price|paid|amt|amount|cost|sales|subsidy|lent/i;
+function queryCols(q) {
+  return q.cols.map((c, i) => {
+    const isNum = q.rows.length > 0 && q.rows.every(r => typeof r[i] === 'number' || r[i] === null);
+    if (!isNum) return [c, 'txt'];
+    if (/_id$/.test(c)) return [c, 'id'];
+    return [c, moneyRe.test(c) && !/rate|percent/i.test(c) ? 'inr' : 'num'];
+  });
+}
+
+/* ---------- tooltip ---------- */
+const tip = document.createElement('div');
+tip.className = 'tip';
+tip.setAttribute('role', 'tooltip');
+document.body.appendChild(tip);
+function placeTip(x, y) {
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let l = x + 12, t = y + 14;
+  if (l + w > innerWidth - 8) l = innerWidth - w - 8;
+  if (l < 8) l = 8;
+  if (t + h > innerHeight - 8) t = y - h - 12;
+  tip.style.left = l + 'px';
+  tip.style.top = Math.max(8, t) + 'px';
+}
+function showTip(el, x, y) { tip.textContent = el.dataset.tip; tip.style.display = 'block'; placeTip(x, y); }
+document.addEventListener('pointerover', e => { const el = e.target.closest('[data-tip]'); if (el) showTip(el, e.clientX, e.clientY); });
+document.addEventListener('pointermove', e => { if (tip.style.display === 'block' && e.target.closest('[data-tip]')) placeTip(e.clientX, e.clientY); });
+document.addEventListener('pointerout', e => { if (e.target.closest('[data-tip]')) tip.style.display = 'none'; });
+document.addEventListener('focusin', e => { const el = e.target.closest && e.target.closest('[data-tip]'); if (el) { const r = el.getBoundingClientRect(); showTip(el, r.left + r.width / 2, r.bottom - 8); } });
+document.addEventListener('focusout', () => { tip.style.display = 'none'; });
+
+/* ---------- derived figures ---------- */
+const totalSub = sum(P, p => p.subsidy);
+const totalList = sum(P, p => p.list_price);
+const totalPaid = sum(P, p => p.paid);
+const subsidised = P.filter(p => p.subsidy > 0).length;
+
+$('#lede').textContent =
+  `${T.Farmer_Info.length} farmers, ${T.Tractors.length} tractors and ${T.Dealer.length} dealers, with ${P.length} purchases recorded under ${T.GovScheme.length} government schemes. ` +
+  `${T.Loan_Details.length} purchases were financed with a bank loan.`;
+
+/* hero */
+$('#hero').innerHTML = `
+  <div class="hero-label">Subsidy given</div>
+  <div class="hero-num">₹${trim(totalSub / 1e5)}<small>lakh</small></div>
+  <p class="hero-note">${subsidised} of ${P.length} purchases used a government scheme, covering ${Math.round(totalSub / totalList * 100)}% of the ${lakh(totalList)} list price of every tractor sold.</p>
+  <div class="split" role="img" aria-label="Of ${lakh(totalList)} list price, farmers paid ${lakh(totalPaid)} and subsidy covered ${lakh(totalSub)}">
+    <b style="flex:${totalPaid}" data-tip="Farmers paid ${inr(totalPaid)}" tabindex="0"></b><b style="flex:${totalSub}" data-tip="Subsidy ${inr(totalSub)}" tabindex="0"></b>
+  </div>
+  <div class="legend"><span><span class="sw" style="background:var(--s1)"></span>Paid by farmers</span><span><span class="sw" style="background:var(--s2)"></span>Subsidy</span></div>`;
+
+/* counts */
+const countItems = [
+  ['Farmer_Info', 'Farmer_Info'], ['Tractors', 'Tractors'], ['Dealer', 'Dealer'], ['GovScheme', 'GovScheme'],
+  ['Purchase', 'Purchase'], ['Loan_Details', 'Loan_Details'], ['Tractor_Service', 'Tractor_Service'], ['Farmer_Phone', 'Farmer_Phone']
+];
+$('#counts').innerHTML = countItems.map(([k, label]) => `<div><div class="n">${T[k].length}</div><div class="t">${label}</div></div>`).join('');
+
+/* ---------- chart cards ---------- */
+function barRows(rows) {
+  const max = Math.max(...rows.map(r => r.value), 1);
+  return rows.map(r => `<div class="brow" tabindex="0" data-tip="${esc(r.tip)}">
+    <div class="bl"><span class="name">${esc(r.label)}</span><span class="bv">${esc(r.text)}</span></div>
+    <div class="bt"><div class="bf" style="width:${(r.value / max * 100).toFixed(1)}%"></div></div></div>`).join('');
+}
+function card({ title, sub, q, span, chart, cols, rows }) {
+  const el = document.createElement('div');
+  el.className = 'card' + (span ? ' span2' : '');
+  el.setAttribute('role', 'group');
+  el.setAttribute('aria-label', title);
+  el.innerHTML = `<div class="card-head"><div><h3>${esc(title)}</h3><p class="card-sub">${esc(sub)}</p></div>
+    <div class="tools">${q ? `<button class="chip" data-q="${q}" title="Open query Q${q}">Q${q}</button>` : ''}<button class="chip" data-table aria-pressed="false">Table</button></div></div>
+    <div class="view-chart">${chart}</div><div class="view-table tablewrap" hidden>${tableHTML(cols, rows)}</div>`;
+  el.querySelector('[data-table]').addEventListener('click', e => {
+    const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', on);
+    el.querySelector('.view-chart').hidden = on;
+    el.querySelector('.view-table').hidden = !on;
+  });
+  $('#charts').appendChild(el);
+  return el;
+}
+
+/* 1. quarterly sales, stacked paid + subsidy */
+(function () {
+  const buckets = {};
+  P.forEach(p => {
+    const [y, m] = p.date.split('-').map(Number);
+    const key = `${y}-Q${Math.ceil(m / 3)}`;
+    const b = buckets[key] ||= { y, q: Math.ceil(m / 3), n: 0, paid: 0, sub: 0 };
+    b.n++; b.paid += p.paid; b.sub += p.subsidy;
+  });
+  const first = Object.values(buckets).reduce((a, b) => (a.y * 4 + a.q < b.y * 4 + b.q ? a : b));
+  const last = Object.values(buckets).reduce((a, b) => (a.y * 4 + a.q > b.y * 4 + b.q ? a : b));
+  const qs = [];
+  for (let i = first.y * 4 + first.q - 1; i <= last.y * 4 + last.q - 1; i++) {
+    const y = Math.floor(i / 4), q = (i % 4) + 1;
+    qs.push(buckets[`${y}-Q${q}`] || { y, q, n: 0, paid: 0, sub: 0 });
+  }
+  const topTotal = Math.max(...qs.map(b => b.paid + b.sub));
+  const step = [1e5, 2.5e5, 5e5, 1e6, 2e6, 5e6].find(s => topTotal / s <= 5) || 5e6;
+  const axisMax = Math.ceil(topTotal / step) * step;
+  const H = 200;
+  let grid = '';
+  for (let v = 0; v <= axisMax; v += step) {
+    grid += `<div class="gl${v === 0 ? ' base' : ''}" style="bottom:${v / axisMax * H}px"><span>${v === 0 ? '₹0' : lakh(v)}</span></div>`;
+  }
+  const cols = qs.map(b => {
+    const tipText = `Q${b.q} ${b.y}: ${b.n} tractor${b.n === 1 ? '' : 's'} sold\nFarmers paid ${inr(b.paid)}\nSubsidy ${inr(b.sub)}`;
+    const paidH = b.paid / axisMax * H, subH = b.sub / axisMax * H;
+    const segs = [];
+    if (b.paid > 0) segs.push(`<i class="paid${b.sub > 0 ? '' : ' top'}" style="height:${paidH}px"></i>`);
+    if (b.sub > 0) segs.push(`<i class="sub top" style="height:${subH}px"></i>`);
+    return `<div class="col" tabindex="0" data-tip="${esc(tipText)}"><div class="stack">${segs.join('')}</div></div>`;
+  }).join('');
+  const labels = qs.map(b => `<span>Q${b.q}<br>’${String(b.y).slice(2)}</span>`).join('');
+  const chart = `<div class="legend" style="margin:0 0 4px"><span><span class="sw" style="background:var(--s1)"></span>Paid by farmers</span><span><span class="sw" style="background:var(--s2)"></span>Subsidy</span></div>
+    <div class="plot">${grid}<div class="cols">${cols}</div></div><div class="xl">${labels}</div>`;
+  card({
+    title: 'Tractor sales by quarter', sub: 'List price of tractors sold, split into what farmers paid and what the subsidy covered', q: 3, span: true, chart,
+    cols: [['Quarter', 'txt'], ['Tractors', 'num'], ['Farmers paid', 'inr'], ['Subsidy', 'inr'], ['List price', 'inr']],
+    rows: qs.map(b => [`Q${b.q} ${b.y}`, b.n, b.paid, b.sub, b.paid + b.sub])
+  });
+})();
+
+/* 2. subsidy by scheme (Q5) */
+(function () {
+  const q = getQ(5), a = qIndex(q, 'scheme_name'), b = qIndex(q, 'beneficiaries'), c = qIndex(q, 'total_subsidy');
+  const rows = q.rows.map(r => ({ label: r[a], value: r[c], text: lakh(r[c]), tip: `${r[a]}\n${inr(r[c])} to ${r[b]} farmer${r[b] === 1 ? '' : 's'}` }));
+  card({ title: 'Subsidy by scheme', sub: 'Total subsidy paid under each scheme', q: 5, chart: barRows(rows), cols: queryCols(q), rows: q.rows });
+})();
+
+/* 3. sales by dealer (Q4) */
+(function () {
+  const q = getQ(4), a = qIndex(q, 'dealer_name'), b = qIndex(q, 'tractors_sold'), c = qIndex(q, 'total_sales');
+  const rows = q.rows.map(r => ({ label: r[a], value: r[c], text: `${lakh(r[c])} · ${r[b]} sold`, tip: `${r[a]}\n${r[b]} tractor${r[b] === 1 ? '' : 's'} sold\n${inr(r[c])} paid by farmers` }));
+  card({ title: 'Sales by dealer', sub: 'Amount paid by farmers, with tractors sold', q: 4, chart: barRows(rows), cols: queryCols(q), rows: q.rows });
+})();
+
+/* 4. brands (Q10) */
+(function () {
+  const q = getQ(10), a = qIndex(q, 'brand'), b = qIndex(q, 'units_sold');
+  const rows = q.rows.map(r => ({ label: r[a], value: r[b], text: `${r[b]} sold`, tip: `${r[a]}: ${r[b]} tractor${r[b] === 1 ? '' : 's'} sold` }));
+  card({ title: 'Tractor brands sold', sub: 'Units sold per brand', q: 10, chart: barRows(rows), cols: queryCols(q), rows: q.rows });
+})();
+
+/* 5. loans */
+(function () {
+  const order = ['Active', 'Overdue', 'Closed'];
+  const by = Object.fromEntries(order.map(s => [s, L.filter(l => l.status === s)]));
+  const blocks = order.filter(s => by[s].length).map(s => {
+    const n = by[s].length, amt = sum(by[s], l => l.amount);
+    return `<b class="${s}" style="flex:${n} 1 0" tabindex="0" data-tip="${s}: ${n} loan${n === 1 ? '' : 's'}\n${inr(amt)} sanctioned">${n}</b>`;
+  }).join('');
+  const legend = order.filter(s => by[s].length).map(s => `<span class="pill ${s}"><i aria-hidden="true">${GLYPH[s]}</i>${s}</span>`).join('');
+  const od = by.Overdue;
+  const callout = od.length ? `<div class="callout"><span class="pill Overdue" style="border:0;padding:0"><i aria-hidden="true">!</i></span>
+    <p>${od.length} overdue loan${od.length === 1 ? '' : 's'}, ${lakh(sum(od, l => l.amount))} sanctioned: ${od.map(l => `${esc(l.farmer)} (${esc(l.bank)})`).join(', ')}.</p></div>` : '';
+  const q = getQ(11);
+  const chart = `<div class="seg" role="img" aria-label="Loans by status">${blocks}</div><div class="legend">${legend}</div>${callout}
+    <div class="tablewrap">${tableHTML([['Bank', 'txt'], ['Loans', 'num'], ['Avg rate', 'pct'], ['Total lent', 'inr']], q.rows)}</div>`;
+  card({
+    title: 'Loans by status', sub: `${L.length} loans across ${q.rows.length} banks`, q: 11, chart,
+    cols: [['Loan', 'id'], ['Farmer', 'txt'], ['Bank', 'txt'], ['Amount', 'inr'], ['Rate', 'pct'], ['Months', 'num'], ['Status', 'pill']],
+    rows: L.map(l => [l.id, l.farmer, l.bank, l.amount, l.rate, l.months, l.status])
+  });
+})();
+
+/* 6. service spend (Q8) */
+(function () {
+  const q = getQ(8), id = qIndex(q, 'purchase_id'), fn = qIndex(q, 'fname'), md = qIndex(q, 'model'), sv = qIndex(q, 'services'), tc = qIndex(q, 'total_cost');
+  const rows = q.rows.map(r => ({
+    label: `#${r[id]} ${r[fn]} · ${r[md]}`, value: r[tc], text: `${inr(r[tc])} · ${r[sv]} visit${r[sv] === 1 ? '' : 's'}`,
+    tip: `Purchase #${r[id]}: ${r[fn]}, ${r[md]}\n${r[sv]} service${r[sv] === 1 ? '' : 's'}, ${inr(r[tc])} in total`
+  }));
+  card({ title: 'Service spend per tractor', sub: 'Total service cost for each purchase, highest first', q: 8, chart: barRows(rows), cols: queryCols(q), rows: q.rows });
+})();
+
+/* ---------- records ---------- */
+const dealerById = Object.fromEntries(T.Dealer.map(d => [d.dealer_id, d]));
+const phones = {};
+T.Farmer_Phone.forEach(p => (phones[p.farmer_id] ||= []).push(p.phone));
+const REC = {
+  farmers: { label: 'Farmers', cols: [['ID', 'id'], ['First', 'txt'], ['Last', 'txt'], ['Village', 'txt'], ['District', 'txt'], ['Acres', 'num'], ['Phone numbers', 'txt']],
+    rows: T.Farmer_Info.map(f => [f.farmer_id, f.fname, f.lname, f.village, f.district, f.land_acres, (phones[f.farmer_id] || []).join(', ')]) },
+  tractors: { label: 'Tractors', cols: [['ID', 'id'], ['Brand', 'txt'], ['Model', 'txt'], ['HP', 'num'], ['Price', 'inr'], ['Dealer', 'txt']],
+    rows: T.Tractors.map(t => [t.tractor_id, t.brand, t.model, t.hp, t.price, dealerById[t.dealer_id].dealer_name]) },
+  dealers: { label: 'Dealers', cols: [['ID', 'id'], ['Name', 'txt'], ['City', 'txt'], ['Phone', 'txt']],
+    rows: T.Dealer.map(d => [d.dealer_id, d.dealer_name, d.city, d.phone]) },
+  schemes: { label: 'Schemes', cols: [['ID', 'id'], ['Scheme', 'txt'], ['Subsidy', 'pct'], ['Max subsidy', 'inr'], ['Min acres', 'num']],
+    rows: T.GovScheme.map(s => [s.scheme_id, s.scheme_name, s.subsidy_percent, s.max_subsidy, s.min_land_acres]) },
+  purchases: { label: 'Purchases', cols: [['ID', 'id'], ['Farmer', 'txt'], ['Tractor', 'txt'], ['Scheme', 'txt'], ['Date', 'txt'], ['List price', 'inr'], ['Subsidy', 'inr'], ['Paid', 'inr']],
+    rows: P.map(p => [p.id, p.farmer, `${p.brand} ${p.model}`, p.scheme, p.date, p.list_price, p.subsidy, p.paid]) },
+  loans: { label: 'Loans', cols: [['ID', 'id'], ['Farmer', 'txt'], ['Bank', 'txt'], ['Amount', 'inr'], ['Rate', 'pct'], ['Months', 'num'], ['Status', 'pill']],
+    rows: L.map(l => [l.id, l.farmer, l.bank, l.amount, l.rate, l.months, l.status]) },
+  services: { label: 'Service', cols: [['Purchase', 'id'], ['Svc #', 'num'], ['Tractor', 'txt'], ['Date', 'txt'], ['Type', 'txt'], ['Cost', 'inr']],
+    rows: D.views.services.map(s => [s.pid, s.no, s.tractor, s.date, s.type, s.cost]) }
+};
+let recKey = 'farmers';
+function renderRec() {
+  const r = REC[recKey];
+  const needle = $('#search').value.trim().toLowerCase();
+  const rows = needle ? r.rows.filter(row => row.join(' ').toLowerCase().includes(needle)) : r.rows;
+  $('#recTable').innerHTML = tableHTML(r.cols, rows);
+  $('#recMeta').textContent = `${rows.length} of ${r.rows.length} rows`;
+  document.querySelectorAll('#tabs .tab').forEach(b => b.setAttribute('aria-selected', b.dataset.k === recKey));
+}
+$('#tabs').innerHTML = Object.entries(REC).map(([k, r]) => `<button class="tab" role="tab" data-k="${k}">${r.label}<small>${r.rows.length}</small></button>`).join('');
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) { recKey = b.dataset.k; renderRec(); } });
+$('#search').addEventListener('input', renderRec);
+renderRec();
+
+/* ---------- sql explorer ---------- */
+const KW = /\b(SELECT|FROM|LEFT JOIN|JOIN|ON|WHERE|GROUP BY|ORDER BY|HAVING|AND|OR|NOT IN|IN|IS NULL|IS|NOT|NULL|AS|DESC|ASC|COUNT|SUM|AVG|ROUND|COALESCE|DISTINCT)\b/g;
+function prettySQL(sql) {
+  const broken = sql.replace(/\s+(LEFT JOIN|JOIN|WHERE|GROUP BY|ORDER BY|HAVING)\b/g, '\n$1').replace(/\s+(FROM)\b(?![^(]*\))/g, '\n$1');
+  return esc(broken).replace(KW, '<span class="kw">$1</span>') + ';';
+}
+let qNow = 1;
+function renderQuery(n) {
+  qNow = n;
+  const q = getQ(n);
+  const m = q.title.match(/^(Q\d+)\s+(.*)$/);
+  $('#qpanel').innerHTML = `<div class="qh"><span class="mono">${esc(m[1])}</span><h3>${esc(m[2])}</h3></div>
+    <pre class="sql">${prettySQL(q.sql)}</pre>
+    <p class="meta" style="margin:0 0 8px">${q.rows.length} row${q.rows.length === 1 ? '' : 's'}</p>
+    <div class="tablewrap">${tableHTML(queryCols(q), q.rows)}</div>`;
+  document.querySelectorAll('#qlist .qbtn').forEach((b, i) => b.setAttribute('aria-current', i + 1 === n));
+}
+$('#qlist').innerHTML = D.queries.map((q, i) => {
+  const m = q.title.match(/^(Q\d+)\s+(.*)$/);
+  return `<button class="qbtn" role="listitem" data-n="${i + 1}"><span class="q">${esc(m[1])}</span><span>${esc(m[2])}</span></button>`;
+}).join('');
+$('#qlist').addEventListener('click', e => { const b = e.target.closest('.qbtn'); if (b) renderQuery(+b.dataset.n); });
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-q]');
+  if (!c) return;
+  renderQuery(+c.dataset.q);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  $('#queries').scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
+});
+renderQuery(1);
+
+/* ---------- schema ---------- */
+$('#schemaGrid').innerHTML = D.schema.map(t => `<div class="card tcard"><h3>${esc(t.name)}<span>${t.rows} rows</span></h3><ul>${
+  t.columns.map(c => `<li><span class="c">${esc(c.name)}</span><span class="ty">${esc(c.type)}</span>${c.pk ? '<span class="tag pk">PK</span>' : ''}${c.fk ? `<span class="tag">FK → ${esc(c.fk.table)}</span>` : ''}</li>`).join('')
+}</ul></div>`).join('');
+const cascades = D.schema.flatMap(t => t.columns.filter(c => c.fk && c.fk.on_delete === 'CASCADE').map(c => t.name));
+$('#rules').innerHTML = [
+  `Deleting a parent row removes its dependants in ${cascades.join(', ')} (ON DELETE CASCADE).`,
+  'Farmer_Info and Tractors rows cannot be deleted while a purchase refers to them (referential integrity).',
+  'A new purchase and its optional loan are saved in one transaction, and rolled back together if either fails.',
+  'CHECK constraints keep horsepower, price and loan amount above zero, land area non-negative, subsidy percent within 0 to 100, and loan status to Active, Closed or Overdue.'
+].map(s => `<li>${s}</li>`).join('');
+</script>
+
+</body></html>

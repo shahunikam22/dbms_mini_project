@@ -1,0 +1,14 @@
+:root{--g:#2e6b3a;--bg:#f6f7f4;--ink:#1d2320;--line:#dde2da}
+*{box-sizing:border-box}body{margin:0;font:15px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--g);color:#fff;padding:10px 20px;display:flex;flex-wrap:wrap;gap:8px 24px;align-items:center}
+header a{color:#fff;text-decoration:none}.brand{font-weight:700;font-size:18px}nav{display:flex;flex-wrap:wrap;gap:4px 16px}nav a{opacity:.85}nav a:hover{opacity:1;text-decoration:underline}
+main{max-width:1050px;margin:24px auto;padding:0 16px}h1{margin:0 0 12px}h1 small{font-size:13px;color:#6b756d;font-weight:400}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:12px 0}.card{background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px}
+.card b{display:block;font-size:24px;color:var(--g)}.card span{font-size:12px;color:#6b756d;text-transform:capitalize}
+table{border-collapse:collapse;width:100%;background:#fff;border:1px solid var(--line)}th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:#eef2ec;font-size:12px;text-transform:uppercase;letter-spacing:.04em}.scroll{overflow-x:auto}
+.btn{display:inline-block;background:var(--g);color:#fff;padding:8px 14px;border:0;border-radius:6px;text-decoration:none;cursor:pointer;font:inherit}.btn.alt{background:#fff;color:var(--g);border:1px solid var(--g)}
+.actions{display:flex;gap:8px;margin:12px 0}.flash{background:#fff7d6;border:1px solid #e6d27a;padding:8px 12px;border-radius:6px;margin-bottom:12px}
+.form{display:grid;gap:12px;max-width:420px}label{display:grid;gap:4px;font-size:13px;color:#4a554d}input,select{padding:8px;border:1px solid #c4ccc2;border-radius:6px;font:inherit}
+button.link{background:none;border:0;color:#b3261e;cursor:pointer;font:inherit}pre{background:#1d2320;color:#d7f0d9;padding:12px;border-radius:6px;overflow-x:auto;white-space:pre-wrap}
+.qlist{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}.qlist a{padding:4px 10px;border:1px solid var(--line);background:#fff;border-radius:6px;text-decoration:none;color:var(--ink)}.qlist a.on{background:var(--g);color:#fff}.muted{color:#6b756d}
